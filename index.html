@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WordBuddy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A free voice tutor that teaches English vocabulary one word at a time.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E4572E'/%3E%3Ctext x='16' y='23' font-size='20' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'%3EW%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --ground:#EEF3F0; --surface:#FFFFFF; --sunk:#E3EBE6; --line:#CFDBD4;
+  --ink:#13302A; --muted:#566B63; --accent:#E4572E; --accent-ink:#FFFFFF;
+  --green:#1F7A5C; --green-soft:#D6EDE3; --bad:#B3261E; --bad-soft:#F7DEDA;
+  --tutor:#E3EBE6; --you:#13302A; --you-ink:#EEF3F0;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0E1916; --surface:#15231F; --sunk:#1B2C27; --line:#283D36;
+    --ink:#E2EDE8; --muted:#92A89F; --accent:#FF7A52; --accent-ink:#1A0E09;
+    --green:#4CC49A; --green-soft:#16372C; --bad:#FF8A80; --bad-soft:#3A1C1A;
+    --tutor:#1D302A; --you:#E2EDE8; --you-ink:#0E1916;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0E1916; --surface:#15231F; --sunk:#1B2C27; --line:#283D36;
+  --ink:#E2EDE8; --muted:#92A89F; --accent:#FF7A52; --accent-ink:#1A0E09;
+  --green:#4CC49A; --green-soft:#16372C; --bad:#FF8A80; --bad-soft:#3A1C1A;
+  --tutor:#1D302A; --you:#E2EDE8; --you-ink:#0E1916;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font:16px/1.5 var(--body);padding-inline:16px;padding-block:20px 40px}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.brand h1{font:800 clamp(28px,4vw,40px)/1 var(--display);letter-spacing:-.02em;margin:0}
+.brand h1 span{color:var(--accent)}
+.brand p{margin:6px 0 0;color:var(--muted);max-width:60ch}
+.chip{display:inline-flex;align-items:center;gap:8px;font:600 12px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;padding:8px 12px;border-radius:999px;background:var(--sunk);color:var(--muted);border:1px solid var(--line)}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.chip.claude i{background:var(--green)} .chip.claude{color:var(--ink)}
+
+.controls{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label,.label{font:600 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+select,input[type=text]{font:inherit;color:var(--ink);background:var(--ground);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
+#topic{width:190px;max-width:100%}
+#voice{max-width:220px}
+.toggle{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding-bottom:6px}
+input[type=range]{accent-color:var(--accent);width:110px}
+input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:16px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+
+/* dictionary-entry card */
+.entry{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:14px}
+.entry .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.badge{font:600 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:6px 9px;border-radius:6px;background:var(--accent);color:var(--accent-ink)}
+.badge.review{background:var(--green);color:var(--surface)}
+.badge.example{background:var(--sunk);color:var(--muted)}
+.headword{font:800 clamp(38px,6vw,56px)/1 var(--display);letter-spacing:-.025em;margin:0;overflow-wrap:anywhere}
+.pron{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;color:var(--muted)}
+.pron .ph{font:400 15px/1.2 var(--mono);color:var(--ink)}
+.pron em{font-style:italic}
+.meaning{font-size:19px;margin:0;max-width:52ch}
+.example{margin:0;padding-left:14px;border-left:3px solid var(--line);color:var(--muted);font-style:italic}
+.example mark{background:none;color:var(--accent);font-weight:700;font-style:normal}
+.hear{align-self:flex-start;font:600 14px/1 var(--body);color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer}
+.hear:hover{border-color:var(--ink)}
+
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px dashed var(--line);padding-top:14px;gap:8px}
+.stat b{display:block;font:700 28px/1 var(--display);font-variant-numeric:tabular-nums}
+.stat span{font:600 11px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.learned{display:flex;flex-wrap:wrap;gap:6px}
+.learned span{font-size:13px;padding:3px 9px;border-radius:999px;background:var(--sunk);border:1px solid var(--line)}
+.learned span.ok{background:var(--green-soft);border-color:transparent}
+.learned span.miss{background:var(--bad-soft);border-color:transparent}
+.learned .empty{background:none;border:none;padding:0;color:var(--muted)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.link{background:none;border:none;color:var(--muted);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer;padding:0}
+
+/* conversation */
+.talk{background:var(--surface);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;height:min(640px,78vh);min-height:420px}
+.log{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:85%;padding:10px 14px;border-radius:14px;overflow-wrap:anywhere}
+.msg.tutor{background:var(--tutor);align-self:flex-start;border-bottom-left-radius:4px}
+.msg.you{background:var(--you);color:var(--you-ink);align-self:flex-end;border-bottom-right-radius:4px}
+.msg.note{align-self:center;background:none;color:var(--muted);font-size:13px;text-align:center;padding:2px}
+.who{display:block;font:600 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;opacity:.65;margin-bottom:5px}
+.start{align-self:flex-start;font:700 16px/1 var(--body);background:var(--accent);color:var(--accent-ink);border:none;border-radius:10px;padding:13px 18px;cursor:pointer}
+.bar{border-top:1px solid var(--line);padding:12px;display:flex;gap:10px;align-items:center}
+.mic{flex:none;width:56px;height:56px;border-radius:50%;border:none;background:var(--accent);color:var(--accent-ink);cursor:pointer;display:grid;place-items:center;position:relative}
+.mic svg{width:24px;height:24px}
+.mic:disabled{background:var(--sunk);color:var(--muted);cursor:not-allowed}
+.mic.on::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:3px solid var(--accent);animation:pulse 1.2s ease-out infinite}
+@keyframes pulse{from{opacity:.9;transform:scale(.92)}to{opacity:0;transform:scale(1.25)}}
+@media (prefers-reduced-motion:reduce){.mic.on::after{animation:none;opacity:.6}}
+.bar form{flex:1;display:flex;gap:8px;min-width:0}
+.bar input{flex:1;padding:12px 12px;font-size:16px}
+.send{font:700 15px/1 var(--body);background:var(--ink);color:var(--ground);border:none;border-radius:8px;padding:0 16px;cursor:pointer}
+.status{padding:0 14px 10px;min-height:24px;font:600 12px/1.4 var(--mono);color:var(--muted)}
+.status.listen{color:var(--accent)} .status.speak{color:var(--green)}
+button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* how it works */
+details{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px 18px}
+summary{cursor:pointer;font:700 18px/1 var(--display);padding:14px 0}
+.how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:4px 0 16px}
+@media (max-width:760px){.how{grid-template-columns:minmax(0,1fr)}}
+.how h3{font:700 15px/1.2 var(--display);margin:0 0 4px}
+.how p{margin:0;color:var(--muted);font-size:14px}
+.promptbox{position:relative;margin-bottom:18px}
+.promptbox pre{margin:0;background:var(--ground);border:1px solid var(--line);border-radius:10px;padding:16px;overflow-x:auto;font:13px/1.55 var(--mono);white-space:pre-wrap}
+.copy{position:absolute;top:8px;right:8px;font:600 12px/1 var(--mono);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:7px 9px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>Word<span>Buddy</span></h1>
+      <p>A voice tutor that teaches one word at a time. Listen, answer out loud (or type), and get instant feedback.</p>
+    </div>
+    <span class="chip" id="brainChip"><i></i><span id="brainLabel">Brain: built-in word bank</span></span>
+  </header>
+
+  <section class="controls" aria-label="Lesson settings">
+    <div class="field"><label for="level">Level</label>
+      <select id="level"><option value="beginner">Beginner</option><option value="intermediate" selected>Intermediate</option><option value="advanced">Advanced</option></select></div>
+    <div class="field" id="topicField" hidden><label for="topic">Topic</label>
+      <input type="text" id="topic" placeholder="e.g. business, GRE, travel"></div>
+    <div class="field"><label for="voice">Tutor voice</label><select id="voice"><option value="">Default</option></select></div>
+    <div class="field"><label for="rate">Speed <span id="rateVal">1.0×</span></label><input type="range" id="rate" min="0.6" max="1.4" step="0.05" value="1"></div>
+    <label class="toggle"><input type="checkbox" id="handsfree" checked> Hands-free</label>
+    <label class="toggle"><input type="checkbox" id="mute"> Mute tutor</label>
+  </section>
+
+  <div class="grid">
+    <section class="entry" aria-live="polite">
+      <div class="top"><span class="badge example" id="badge">Example</span><span class="label" id="levelTag">Intermediate</span></div>
+      <h2 class="headword" id="hw">vivid</h2>
+      <div class="pron"><span class="ph" id="ph">/VIV-id/</span><em id="pos">adjective</em></div>
+      <p class="meaning" id="mean">Very bright, clear, or detailed; easy to picture in your mind.</p>
+      <p class="example" id="ex"></p>
+      <button class="hear" id="hearBtn" type="button">🔊 Hear the word</button>
+      <div class="stats">
+        <div class="stat"><b id="sLearned">0</b><span>Words seen</span></div>
+        <div class="stat"><b id="sCorrect">0</b><span>Correct</span></div>
+        <div class="stat"><b id="sStreak">0</b><span>Streak</span></div>
+      </div>
+      <div class="row"><span class="label">Your words</span><button class="link" id="resetBtn" type="button">Reset progress</button></div>
+      <div class="learned" id="learned"><span class="empty">Words you meet will collect here.</span></div>
+    </section>
+
+    <section class="talk" aria-label="Conversation">
+      <div class="log" id="log" aria-live="polite"></div>
+      <div class="status" id="status"></div>
+      <div class="bar">
+        <button class="mic" id="micBtn" type="button" aria-label="Start talking" title="Tap to talk">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        </button>
+        <form id="form"><input type="text" id="box" autocomplete="off" placeholder="Say or type your answer…" aria-label="Your answer"><button class="send" type="submit">Send</button></form>
+      </div>
+    </section>
+  </div>
+
+  <details id="how">
+    <summary>How it works &amp; the agent prompt</summary>
+    <div class="how">
+      <div><h3>Ears</h3><p>The browser's Web Speech API turns your voice into text. Hands-free mode reopens the mic each time the tutor finishes talking. It works in Chrome and Edge.</p></div>
+      <div><h3>Brain</h3><p>A built-in tutor with 75 words across three levels picks words, asks quiz questions, checks your answers, and reviews earlier words. Everything runs in your browser: no account, no data sent anywhere. The prompt below is the AI version of the same tutor, for use with Claude.</p></div>
+      <div><h3>Voice</h3><p>The browser's speech synthesis reads each reply aloud. You can change the voice and speed, or mute it.</p></div>
+    </div>
+    <div class="promptbox"><button class="copy" id="copyBtn" type="button">Copy</button><pre id="promptText"></pre></div>
+  </details>
+</div>
+
+<script>
+const PROMPT = `You are WordBuddy, a warm, upbeat VOICE tutor who helps people build English vocabulary.
+Everything you say is read aloud by text-to-speech, so:
+- Keep each reply to 1-3 short sentences (4 max when introducing a word).
+- No markdown, lists, emojis or symbols. Write numbers as words.
+- Spell a word letter by letter only if the learner asks.
+
+Each learner message arrives with a [Learner state] line: level, topic, current_word, learned_words and new_words_so_far.
+
+Session loop:
+1. Introduce ONE new word that fits the learner's level and topic. Say it once, give an easy pronunciation hint, a plain-English meaning and one vivid example sentence.
+2. Then ask ONE quick check, and vary the kind: "use it in your own sentence", "give me a synonym" or "what does it mean in your own words".
+3. Judge the answer kindly. Speech-to-text makes mistakes, so accept near-spellings.
+   - Correct: praise something specific, set correct=true, and move straight on to the next new word.
+   - Wrong or unclear on the first try: give a small hint, set correct=null, and let them retry.
+   - Wrong on the second try: explain the answer warmly, set correct=false, and move on.
+4. After every third new word, run a quick review of one word from learned_words instead of a new one.
+5. If the learner asks something ("what does X mean", "say it slower", "easier words", "spell it", "skip"), answer or adapt first.
+
+Never introduce a word from learned_words as new.
+
+Reply ONLY with JSON in this shape:
+{"say": string,
+ "word": {"term": string, "pos": string, "hint": string, "meaning": string, "example": string} | null,
+ "correct": true | false | null}
+Set "word" only when you introduce a new word or a review word; otherwise null.`;
+
+const BANK = {
+  beginner: [
+    {term:"brave",pos:"adjective",hint:"BRAYV",meaning:"ready to face danger or pain without showing fear.",example:"The brave girl jumped into the cold lake to save her dog.",syn:["courageous","bold","fearless","daring"],keys:["fear","danger","courage","scared","afraid"]},
+    {term:"curious",pos:"adjective",hint:"KYOOR-ee-us",meaning:"wanting to know or learn about something.",example:"The curious cat opened every box in the kitchen.",syn:["inquisitive","interested","nosy"],keys:["know","learn","interest","wonder","find out"]},
+    {term:"gentle",pos:"adjective",hint:"JEN-tul",meaning:"soft, kind and careful; not rough.",example:"Be gentle when you hold the baby bird.",syn:["soft","kind","tender","mild","calm"],keys:["soft","kind","careful","not rough","calm"]},
+    {term:"borrow",pos:"verb",hint:"BOR-oh",meaning:"to take something that you will give back later.",example:"Can I borrow your pen for a minute?",syn:["take","loan","use"],keys:["give back","return","take","use"]},
+    {term:"ancient",pos:"adjective",hint:"AYN-shunt",meaning:"very, very old; from a long time ago.",example:"We visited an ancient castle built a thousand years ago.",syn:["old","antique","prehistoric","aged"],keys:["old","long ago","long time","past","history"]},
+    {term:"whisper",pos:"verb",hint:"WIS-per",meaning:"to speak very quietly, using your breath.",example:"She leaned over to whisper a secret in my ear.",syn:["murmur","mutter","mumble"],keys:["quiet","softly","low voice","secret"]},
+    {term:"delicious",pos:"adjective",hint:"dih-LISH-us",meaning:"having a very pleasant taste or smell.",example:"Grandma's soup was so delicious that I had three bowls.",syn:["tasty","yummy","scrumptious","flavorful"],keys:["taste","tasty","good","food","yummy"]},
+    {term:"huge",pos:"adjective",hint:"HYOOJ",meaning:"extremely large.",example:"A huge wave crashed onto the beach.",syn:["enormous","giant","massive","big","gigantic","large"],keys:["big","large","enormous","giant"]},
+    {term:"tidy",pos:"adjective",hint:"TY-dee",meaning:"neat and in order.",example:"Keep your desk tidy so you can find your homework.",syn:["neat","organized","clean","orderly"],keys:["neat","clean","order","organized"]},
+    {term:"rescue",pos:"verb",hint:"RES-kyoo",meaning:"to save someone or something from danger.",example:"Firefighters came to rescue the kitten from the tree.",syn:["save","free","help","recover"],keys:["save","danger","help","free"]},
+    {term:"cheerful",pos:"adjective",hint:"CHEER-ful",meaning:"happy and full of good spirits.",example:"Our cheerful neighbor always waves and smiles in the morning.",syn:["happy","joyful","jolly","merry","bright","upbeat"],keys:["happy","joy","smil","good mood","glad"]},
+    {term:"fragile",pos:"adjective",hint:"FRAJ-ul",meaning:"easily broken or damaged.",example:"Wrap the glass vase carefully because it is fragile.",syn:["delicate","breakable","weak","flimsy"],keys:["break","broken","delicate","damage","careful"]},
+    {term:"generous",pos:"adjective",hint:"JEN-er-us",meaning:"happy to give more money, time or help than expected.",example:"My generous uncle paid for everyone's ice cream.",syn:["giving","kind","charitable","unselfish","big-hearted"],keys:["give","giving","share","kind","not selfish"]},
+    {term:"hurry",pos:"verb",hint:"HUR-ee",meaning:"to move or do something quickly because there isn't much time.",example:"We had to hurry to catch the last bus home.",syn:["rush","hasten","dash","race","speed"],keys:["quick","fast","rush","no time","late"]},
+    {term:"lonely",pos:"adjective",hint:"LOHN-lee",meaning:"sad because you are alone or have no friends nearby.",example:"The new student felt lonely on her first day.",syn:["alone","isolated","lonesome","friendless"],keys:["alone","sad","no friends","by yourself","isolated"]},
+    {term:"messy",pos:"adjective",hint:"MES-ee",meaning:"dirty or untidy, with things everywhere.",example:"After the party the kitchen was very messy.",syn:["untidy","dirty","cluttered","disorganized","sloppy"],keys:["dirty","untidy","not clean","not tidy","everywhere"]},
+    {term:"polite",pos:"adjective",hint:"puh-LYT",meaning:"showing good manners and respect to others.",example:"It is polite to say thank you when someone helps you.",syn:["courteous","respectful","well-mannered","civil","kind"],keys:["manners","respect","thank","please","nice"]},
+    {term:"shiver",pos:"verb",hint:"SHIV-er",meaning:"to shake slightly because you are cold or scared.",example:"We began to shiver as the snow started falling.",syn:["shake","tremble","quiver","shudder"],keys:["shake","cold","tremble","scared","shaking"]},
+    {term:"sturdy",pos:"adjective",hint:"STUR-dee",meaning:"strong and not easily broken.",example:"We need a sturdy table to hold all these books.",syn:["strong","solid","tough","durable","firm"],keys:["strong","solid","not break","tough","won't break"]},
+    {term:"wander",pos:"verb",hint:"WON-der",meaning:"to walk around slowly without a clear plan or goal.",example:"On Sundays we like to wander through the old market.",syn:["roam","stroll","drift","ramble","meander"],keys:["walk","around","no plan","without","slowly"]},
+    {term:"gather",pos:"verb",hint:"GATH-er",meaning:"to bring or come together in one place.",example:"The family will gather at grandma's house for dinner.",syn:["collect","assemble","meet","group","bring together"],keys:["together","collect","one place","meet","group"]},
+    {term:"famous",pos:"adjective",hint:"FAY-mus",meaning:"known by very many people.",example:"The famous singer signed autographs after the show.",syn:["well-known","celebrated","renowned","popular","star"],keys:["known","popular","everyone knows","celebrity","many people"]},
+    {term:"empty",pos:"adjective",hint:"EMP-tee",meaning:"with nothing or no one inside.",example:"By midnight the stadium was completely empty.",syn:["vacant","bare","hollow","blank","unoccupied"],keys:["nothing","no one","nobody","inside","not full"]},
+    {term:"clever",pos:"adjective",hint:"KLEV-er",meaning:"quick to learn and understand; smart.",example:"The clever fox found a way to open the gate.",syn:["smart","intelligent","bright","brilliant","wise","sharp"],keys:["smart","intelligent","learn","understand","brain"]},
+    {term:"fierce",pos:"adjective",hint:"FEERS",meaning:"strong, wild and ready to attack or fight.",example:"The fierce storm knocked down trees all over town.",syn:["wild","savage","ferocious","violent","intense"],keys:["wild","attack","angry","strong","dangerous"]}
+  ],
+  intermediate: [
+    {term:"reluctant",pos:"adjective",hint:"rih-LUK-tunt",meaning:"not wanting to do something, so you hesitate.",example:"He was reluctant to jump into the freezing pool.",syn:["unwilling","hesitant","averse","disinclined"],keys:["not want","don't want","unwilling","hesitat","not wanting"]},
+    {term:"vivid",pos:"adjective",hint:"VIV-id",meaning:"very bright, clear, or detailed; easy to picture in your mind.",example:"She painted a vivid picture of the sunset over the sea.",syn:["bright","clear","colorful","lively","graphic","striking"],keys:["bright","clear","detail","colorful","picture"]},
+    {term:"frugal",pos:"adjective",hint:"FROO-gul",meaning:"careful not to waste money or resources.",example:"Being frugal, she packed lunch instead of eating out.",syn:["thrifty","economical","careful","sparing","stingy"],keys:["money","save","waste","cheap","spend"]},
+    {term:"persuade",pos:"verb",hint:"per-SWAYD",meaning:"to make someone agree or do something by giving good reasons.",example:"I tried to persuade my brother to come hiking with us.",syn:["convince","influence","coax","sway"],keys:["convince","agree","reason","make someone"]},
+    {term:"candid",pos:"adjective",hint:"KAN-did",meaning:"honest and direct, even when the truth is uncomfortable.",example:"Thanks for your candid feedback on my essay.",syn:["honest","frank","direct","open","blunt","straightforward"],keys:["honest","truth","direct","frank","open"]},
+    {term:"cherish",pos:"verb",hint:"CHAIR-ish",meaning:"to love and care for something because it's precious to you.",example:"I cherish the letters my grandfather wrote me.",syn:["treasure","value","adore","love","prize"],keys:["love","care","precious","value","treasure"]},
+    {term:"meticulous",pos:"adjective",hint:"meh-TIK-yuh-lus",meaning:"paying very careful attention to every detail.",example:"The meticulous chef weighed every gram of flour.",syn:["careful","precise","thorough","exact","detailed"],keys:["detail","careful","precise","thorough","exact"]},
+    {term:"resilient",pos:"adjective",hint:"rih-ZIL-yunt",meaning:"able to recover quickly after something difficult.",example:"The resilient team came back to win after a bad start.",syn:["tough","strong","hardy","adaptable","durable"],keys:["recover","bounce back","tough","strong","difficult"]},
+    {term:"obsolete",pos:"adjective",hint:"ob-suh-LEET",meaning:"no longer used because something newer has replaced it.",example:"Floppy disks became obsolete when USB drives arrived.",syn:["outdated","old-fashioned","outmoded","antiquated","dated"],keys:["no longer","outdated","old","replaced","not used"]},
+    {term:"anticipate",pos:"verb",hint:"an-TIS-ih-payt",meaning:"to expect something and prepare for it.",example:"We anticipate a big crowd, so we ordered extra chairs.",syn:["expect","predict","foresee","await"],keys:["expect","predict","prepare","before","future"]},
+    {term:"ambiguous",pos:"adjective",hint:"am-BIG-yoo-us",meaning:"having more than one possible meaning, so it's unclear.",example:"His ambiguous answer left us unsure whether he would come.",syn:["unclear","vague","uncertain","equivocal","confusing"],keys:["unclear","more than one","two meaning","not clear","confus"]},
+    {term:"diligent",pos:"adjective",hint:"DIL-ih-junt",meaning:"working hard and carefully.",example:"The diligent student reviewed her notes every evening.",syn:["hardworking","industrious","careful","conscientious","thorough"],keys:["hard work","work hard","careful","effort","hardworking"]},
+    {term:"elaborate",pos:"adjective",hint:"ih-LAB-er-it",meaning:"detailed and complicated, with many parts.",example:"They planned an elaborate surprise party with games and music.",syn:["detailed","complex","intricate","complicated","fancy"],keys:["detail","complicated","complex","many parts","fancy"]},
+    {term:"feasible",pos:"adjective",hint:"FEE-zuh-bul",meaning:"possible and practical to do.",example:"Finishing the project by Friday is feasible if we start today.",syn:["possible","doable","practical","achievable","workable","viable"],keys:["possible","can be done","doable","practical","able"]},
+    {term:"gregarious",pos:"adjective",hint:"grih-GAIR-ee-us",meaning:"enjoying being with other people; sociable.",example:"Our gregarious cousin talks to everyone at family parties.",syn:["sociable","outgoing","friendly","extroverted","social"],keys:["social","people","friendly","outgoing","company"]},
+    {term:"hesitate",pos:"verb",hint:"HEZ-ih-tayt",meaning:"to pause before doing something because you are unsure.",example:"Don't hesitate to ask if you need help.",syn:["pause","waver","delay","falter","wait"],keys:["pause","unsure","not sure","wait","stop"]},
+    {term:"inevitable",pos:"adjective",hint:"in-EV-ih-tuh-bul",meaning:"certain to happen; impossible to avoid.",example:"With dark clouds overhead, rain seemed inevitable.",syn:["unavoidable","certain","inescapable","sure","destined"],keys:["certain","avoid","going to happen","will happen","sure"]},
+    {term:"lenient",pos:"adjective",hint:"LEE-nee-unt",meaning:"not strict; gentle when punishing or judging.",example:"The lenient teacher gave us an extra day for homework.",syn:["gentle","merciful","tolerant","easygoing","soft","forgiving"],keys:["not strict","gentle","easy","forgiv","mercy"]},
+    {term:"mundane",pos:"adjective",hint:"mun-DAYN",meaning:"ordinary and boring; part of everyday life.",example:"Washing dishes is a mundane but necessary chore.",syn:["ordinary","boring","dull","routine","everyday","tedious"],keys:["boring","ordinary","everyday","dull","normal"]},
+    {term:"nostalgia",pos:"noun",hint:"no-STAL-juh",meaning:"a happy but sad feeling when you remember the past.",example:"Old cartoons fill me with nostalgia for my childhood.",syn:["longing","wistfulness","reminiscence","yearning","homesickness"],keys:["past","remember","memor","old times","childhood"]},
+    {term:"overwhelm",pos:"verb",hint:"oh-ver-WELM",meaning:"to be too much for someone to deal with.",example:"The huge pile of emails began to overwhelm her.",syn:["overpower","swamp","flood","crush","bury"],keys:["too much","deal with","stress","overpower","handle"]},
+    {term:"plausible",pos:"adjective",hint:"PLAW-zuh-bul",meaning:"seeming reasonable and likely to be true.",example:"He gave a plausible excuse for being late.",syn:["believable","reasonable","credible","likely","convincing"],keys:["believ","reasonable","true","likely","makes sense"]},
+    {term:"scrutinize",pos:"verb",hint:"SKROO-tuh-nyz",meaning:"to examine something very carefully.",example:"The detective began to scrutinize every photo for clues.",syn:["examine","inspect","study","analyze","check"],keys:["careful","examine","look closely","inspect","check"]},
+    {term:"tedious",pos:"adjective",hint:"TEE-dee-us",meaning:"long, slow and boring.",example:"Copying the whole list by hand was tedious work.",syn:["boring","dull","tiresome","monotonous","wearisome"],keys:["boring","long","slow","dull","tiring"]},
+    {term:"versatile",pos:"adjective",hint:"VUR-suh-tul",meaning:"able to do many different things or be used in many ways.",example:"A versatile actor can play both heroes and villains.",syn:["adaptable","flexible","all-round","multipurpose","resourceful"],keys:["many","different","flexible","adapt","lots of"]}
+  ],
+  advanced: [
+    {term:"ephemeral",pos:"adjective",hint:"ih-FEM-er-ul",meaning:"lasting for only a very short time.",example:"The beauty of cherry blossoms is ephemeral; they fall within a week.",syn:["fleeting","brief","short-lived","transient","temporary","momentary"],keys:["short","brief","temporary","doesn't last","not last"]},
+    {term:"ubiquitous",pos:"adjective",hint:"yoo-BIK-wih-tus",meaning:"seeming to be everywhere at the same time.",example:"Smartphones are ubiquitous on the morning train.",syn:["everywhere","omnipresent","pervasive","universal","widespread"],keys:["everywhere","common","all over","widespread"]},
+    {term:"laconic",pos:"adjective",hint:"luh-KON-ik",meaning:"using very few words.",example:"His laconic reply was simply: fine.",syn:["terse","brief","concise","curt","succinct"],keys:["few words","short","brief","not talk","quiet"]},
+    {term:"pragmatic",pos:"adjective",hint:"prag-MAT-ik",meaning:"dealing with things in a practical, realistic way.",example:"Instead of arguing, she took a pragmatic approach and split the bill.",syn:["practical","realistic","sensible","down-to-earth"],keys:["practical","realistic","sensible","works"]},
+    {term:"serendipity",pos:"noun",hint:"ser-en-DIP-ih-tee",meaning:"finding something good by lucky accident.",example:"By pure serendipity, I met my best friend in a lost-luggage line.",syn:["luck","chance","fortune","fluke","happy accident"],keys:["luck","accident","chance","by chance","fortune"]},
+    {term:"cacophony",pos:"noun",hint:"kuh-KOF-uh-nee",meaning:"a harsh, messy mix of loud sounds.",example:"The cacophony of car horns woke the whole street.",syn:["noise","din","racket","clamor","discord"],keys:["noise","loud","sound","harsh","racket"]},
+    {term:"magnanimous",pos:"adjective",hint:"mag-NAN-ih-mus",meaning:"generous and forgiving, especially toward a rival.",example:"The magnanimous winner praised her opponent's skill.",syn:["generous","gracious","forgiving","noble","big-hearted"],keys:["generous","forgiv","kind","noble"]},
+    {term:"obfuscate",pos:"verb",hint:"OB-fuh-skayt",meaning:"to make something deliberately unclear or confusing.",example:"The report used jargon to obfuscate the real problem.",syn:["confuse","obscure","muddle","cloud","blur"],keys:["confus","unclear","hide","obscure"]},
+    {term:"sycophant",pos:"noun",hint:"SIK-uh-fant",meaning:"a person who flatters powerful people to get something.",example:"The king was surrounded by sycophants who agreed with everything.",syn:["flatterer","bootlicker","yes-man","toady","suck-up"],keys:["flatter","suck up","praise","yes man","kiss up"]},
+    {term:"equanimity",pos:"noun",hint:"ee-kwuh-NIM-ih-tee",meaning:"calmness and composure, especially under stress.",example:"She handled the delayed flight with remarkable equanimity.",syn:["calm","composure","serenity","poise","calmness","level-headedness"],keys:["calm","composure","relaxed","stress","peace"]},
+    {term:"esoteric",pos:"adjective",hint:"es-uh-TAIR-ik",meaning:"understood by only a small group with special knowledge.",example:"The lecture was full of esoteric terms only experts knew.",syn:["obscure","arcane","cryptic","specialized","abstruse"],keys:["few people","small group","special knowledge","experts","obscure"]},
+    {term:"garrulous",pos:"adjective",hint:"GAIR-uh-lus",meaning:"talking too much, especially about unimportant things.",example:"The garrulous passenger chatted for the entire flight.",syn:["talkative","chatty","loquacious","wordy","verbose"],keys:["talk","chat","too much","speak a lot","words"]},
+    {term:"iconoclast",pos:"noun",hint:"eye-KON-uh-klast",meaning:"a person who attacks or challenges popular beliefs.",example:"The young iconoclast questioned every rule in the company.",syn:["rebel","dissenter","nonconformist","heretic","radical"],keys:["challenge","belief","rebel","tradition","rules"]},
+    {term:"juxtapose",pos:"verb",hint:"JUK-stuh-pohz",meaning:"to place things side by side to show how they differ.",example:"The museum juxtaposes ancient tools with modern gadgets.",syn:["compare","contrast","pair","set side by side"],keys:["side by side","next to","compare","contrast","together"]},
+    {term:"lethargic",pos:"adjective",hint:"luh-THAR-jik",meaning:"tired, slow and without energy.",example:"The heat made everyone feel lethargic after lunch.",syn:["sluggish","tired","listless","drowsy","lazy","weary"],keys:["tired","energy","slow","sleepy","lazy"]},
+    {term:"mercurial",pos:"adjective",hint:"mer-KYOOR-ee-ul",meaning:"changing mood or mind suddenly and often.",example:"Her mercurial boss was cheerful one minute and furious the next.",syn:["unpredictable","volatile","moody","fickle","changeable","erratic"],keys:["change","mood","unpredictable","sudden","moody"]},
+    {term:"nefarious",pos:"adjective",hint:"nuh-FAIR-ee-us",meaning:"wicked, evil or criminal.",example:"The villain revealed his nefarious plan to steal the crown.",syn:["evil","wicked","villainous","criminal","sinister","vile"],keys:["evil","wicked","criminal","bad","illegal"]},
+    {term:"perfunctory",pos:"adjective",hint:"per-FUNK-tuh-ree",meaning:"done quickly, with little care or interest.",example:"He gave the report a perfunctory glance before signing it.",syn:["cursory","hasty","careless","superficial","token"],keys:["quick","little care","without care","careless","not interest"]},
+    {term:"quixotic",pos:"adjective",hint:"kwik-SOT-ik",meaning:"hopeful and idealistic in a way that isn't practical.",example:"His quixotic plan to end all traffic with one app never worked.",syn:["idealistic","unrealistic","romantic","impractical","dreamy"],keys:["idealist","unrealistic","not practical","impractical","dream"]},
+    {term:"recalcitrant",pos:"adjective",hint:"rih-KAL-sih-trunt",meaning:"stubbornly refusing to obey or cooperate.",example:"The recalcitrant mule would not move an inch.",syn:["stubborn","defiant","disobedient","uncooperative","unruly","obstinate"],keys:["stubborn","refus","obey","not cooperat","disobe"]},
+    {term:"sanguine",pos:"adjective",hint:"SANG-gwin",meaning:"cheerfully confident about the future, even in a bad situation.",example:"Despite the setbacks, the coach remained sanguine about the season.",syn:["optimistic","hopeful","confident","positive","upbeat"],keys:["optimis","hopeful","positive","confident","future"]},
+    {term:"tenacious",pos:"adjective",hint:"tuh-NAY-shus",meaning:"not giving up easily; determined.",example:"The tenacious reporter kept asking until she got an answer.",syn:["determined","persistent","stubborn","resolute","dogged"],keys:["give up","determin","persist","keep going","never stop"]},
+    {term:"vicarious",pos:"adjective",hint:"vy-KAIR-ee-us",meaning:"felt through someone else's experience instead of your own.",example:"I get vicarious thrills watching my sister skydive on video.",syn:["indirect","secondhand","surrogate","empathetic"],keys:["someone else","other people","through","not your own","another person"]},
+    {term:"zealous",pos:"adjective",hint:"ZEL-us",meaning:"full of great energy and enthusiasm for a cause or goal.",example:"The zealous volunteers cleaned the whole beach in a day.",syn:["passionate","eager","enthusiastic","fervent","devoted","keen"],keys:["enthusias","passion","eager","energy","excited"]},
+    {term:"ineffable",pos:"adjective",hint:"in-EF-uh-bul",meaning:"too great or beautiful to be described in words.",example:"Standing on the mountain top, we felt an ineffable sense of peace.",syn:["indescribable","inexpressible","unspeakable","beyond words","unutterable"],keys:["describe","words","can't say","too great","beyond words"]}
+  ]
+};
+const ALL = {}; for (const lv in BANK) for (const w of BANK[lv]) ALL[w.term] = w;
+const LEVELS = ["beginner","intermediate","advanced"];
+const QUIZ = ["sentence","synonym","meaning"];
+const PRAISE = ["Nice one!","Spot on!","Excellent!","You nailed it!","Great answer!","Perfect!"];
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
+const norm = s => " "+s.toLowerCase().replace(/[^a-z\s'-]/g," ").replace(/\s+/g," ").trim()+" ";
+const hasWord = (a, w) => a.includes(" "+w.toLowerCase()+" ") || a.includes(" "+w.toLowerCase().replace(/-/g," ")+" ");
+
+// ---------- state ----------
+const $ = id => document.getElementById(id);
+const S = { level:"intermediate", topic:"", learned:[], correct:0, streak:0,
+  turns:[], current:null, quiz:null, tries:0, newCount:0, justReviewed:false,
+  started:false, busy:false, lastSay:"" };
+const store = {
+  load(){ try { const d = JSON.parse(localStorage.getItem("wordbuddy")||"null"); if (d) Object.assign(S, {level:d.level||S.level, topic:d.topic||"", learned:d.learned||[], correct:d.correct||0}); } catch {} },
+  save(){ try { localStorage.setItem("wordbuddy", JSON.stringify({level:S.level, topic:S.topic, learned:S.learned, correct:S.correct})); } catch {} }
+};
+
+// ---------- UI ----------
+const log = $("log");
+function addMsg(kind, text){
+  const d = document.createElement("div"); d.className = "msg "+kind;
+  if (kind !== "note"){ const w = document.createElement("span"); w.className="who"; w.textContent = kind==="tutor"?"WordBuddy":"You"; d.append(w); }
+  d.append(document.createTextNode(text)); log.append(d); log.scrollTop = log.scrollHeight; return d;
+}
+function setStatus(t, cls=""){ const s=$("status"); s.textContent=t; s.className="status "+cls; }
+function setWord(w, badge){
+  $("hw").textContent = w.term; $("ph").textContent = w.hint ? "/"+w.hint+"/" : "";
+  $("pos").textContent = w.pos||""; $("mean").textContent = cap(w.meaning||"");
+  const ex = $("ex"); ex.textContent = "";
+  const txt = w.example||""; const stem = w.term.slice(0, Math.max(4, w.term.length-2));
+  const i = txt.toLowerCase().indexOf(stem.toLowerCase());
+  if (i < 0) ex.textContent = txt; else {
+    let j = i + stem.length; while (j < txt.length && /[a-z]/i.test(txt[j])) j++;
+    const m = document.createElement("mark"); m.textContent = txt.slice(i,j);
+    ex.append(txt.slice(0,i), m, txt.slice(j));
+  }
+  const b = $("badge"); b.textContent = badge; b.className = "badge "+(badge==="Review"?"review":badge==="Example"?"example":"");
+  $("levelTag").textContent = cap(S.level);
+}
+function renderStats(){
+  $("sLearned").textContent = S.learned.length; $("sCorrect").textContent = S.correct; $("sStreak").textContent = S.streak;
+  const box = $("learned"); box.textContent = "";
+  if (!S.learned.length){ const e=document.createElement("span"); e.className="empty"; e.textContent="Words you meet will collect here."; box.append(e); return; }
+  for (const l of S.learned.slice(-18).reverse()){
+    const c = document.createElement("span"); c.textContent = l.term; c.title = l.meaning||"";
+    if (l.correct===true) c.className="ok"; else if (l.correct===false) c.className="miss"; box.append(c);
+  }
+}
+function addLearned(w){ if (!S.learned.some(l=>l.term.toLowerCase()===w.term.toLowerCase())) { S.learned.push({term:w.term, meaning:w.meaning, correct:null}); store.save(); } renderStats(); }
+function mark(ok){
+  if (S.current){ const l = S.learned.find(l=>l.term.toLowerCase()===S.current.term.toLowerCase()); if (l) l.correct = ok; }
+  if (ok){ S.correct++; S.streak++; } else S.streak = 0;
+  store.save(); renderStats();
+}
+
+// ---------- voice out ----------
+let voices = [], utter = null;
+function loadVoices(){
+  if (!("speechSynthesis" in window)) return;
+  voices = speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang));
+  const sel = $("voice"), keep = sel.value; sel.length = 1;
+  for (const v of voices){ const o=document.createElement("option"); o.value=v.name; o.textContent=v.name.replace(/Microsoft |Google /,"")+" ("+v.lang+")"; sel.append(o); }
+  const pref = voices.find(v=>v.name===keep) || voices.find(v=>/Google US English|Aria|Jenny|Samantha/i.test(v.name));
+  if (pref) sel.value = pref.name;
+}
+if ("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+function speak(text, then=afterSpeak){
+  if (!("speechSynthesis" in window) || $("mute").checked){ then(); return; }
+  speechSynthesis.cancel();
+  utter = new SpeechSynthesisUtterance(text);
+  utter.rate = +$("rate").value;
+  const v = voices.find(v=>v.name===$("voice").value); if (v){ utter.voice = v; utter.lang = v.lang; } else utter.lang = "en-US";
+  utter.onstart = () => setStatus("Speaking…", "speak");
+  utter.onend = utter.onerror = () => { setStatus(""); then(); };
+  speechSynthesis.speak(utter);
+}
+function afterSpeak(){ if ($("handsfree").checked && micOK && S.started) startListening(); }
+function say(text){ S.lastSay = text; addMsg("tutor", text); speak(text); }
+
+// ---------- voice in ----------
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let micOK = !!SR, rec = null, listening = false;
+function disableMic(why){
+  micOK = false; listening = false; $("micBtn").disabled = true; $("micBtn").classList.remove("on");
+  $("micBtn").title = why; $("handsfree").checked = false; $("handsfree").disabled = true;
+  addMsg("note", why); setStatus("");
+}
+function startListening(){
+  if (!micOK || listening || S.busy) return;
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  rec = new SR(); rec.lang = "en-US"; rec.interimResults = true; rec.maxAlternatives = 1;
+  let finalText = "";
+  rec.onresult = e => { let interim = ""; for (let i=e.resultIndex;i<e.results.length;i++){ const r=e.results[i]; if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript; } $("box").value = (finalText+" "+interim).trim(); };
+  rec.onerror = e => {
+    if (["not-allowed","service-not-allowed","audio-capture"].includes(e.error)) disableMic("The microphone is blocked. Allow microphone access for this site in your browser's address bar and reload, or type your answers instead.");
+    else if (e.error === "no-speech") setStatus("Didn't catch that. Tap the mic and try again.");
+  };
+  rec.onend = () => {
+    listening = false; $("micBtn").classList.remove("on"); $("micBtn").setAttribute("aria-label","Start talking");
+    const t = finalText.trim();
+    if (t){ $("box").value = ""; handleUser(t); } else if ($("status").classList.contains("listen")) setStatus("");
+  };
+  try { rec.start(); listening = true; $("micBtn").classList.add("on"); $("micBtn").setAttribute("aria-label","Stop listening"); setStatus("Listening… speak now", "listen"); }
+  catch { disableMic("The microphone couldn't start, so type your answers instead."); }
+}
+$("micBtn").onclick = () => {
+  if (!S.started){ start(); return; }
+  if (listening){ rec.stop(); } else startListening();
+};
+if (!SR) { $("micBtn").disabled = true; $("micBtn").title = "Voice input needs Chrome or Edge"; $("handsfree").checked = false; $("handsfree").disabled = true; }
+
+// ---------- brain: Claude (when hosted) ----------
+let sample = null;
+(async () => {
+  try { if (window.claude && window.claude.use){ const s = await window.claude.use("sample"); if (s){ sample = s; setBrain(true); } } } catch {}
+})();
+function setBrain(on){
+  $("brainChip").classList.toggle("claude", on);
+  $("brainLabel").textContent = on ? "Brain: Claude" : "Brain: built-in word bank";
+  $("topicField").hidden = !on;
+}
+async function askClaude(text, hidden){
+  const learnedTerms = S.learned.slice(-40).map(l=>l.term).join(", ") || "none";
+  const state = `[Learner state] level=${S.level}; topic=${S.topic||"general English"}; current_word=${S.current?S.current.term:"none"}; learned_words=${learnedTerms}; new_words_so_far=${S.newCount}`;
+  S.turns.push({role:"user", content: state + "\n" + (hidden ? text : `Learner said (speech-to-text): "${text}"`)});
+  if (S.turns.length > 16) S.turns = S.turns.slice(-16);
+  while (S.turns.length && S.turns[0].role !== "user") S.turns.shift();
+  S.busy = true; setStatus("Thinking…");
+  try {
+    const r = await sample.json([{role:"user", content: PROMPT}, ...S.turns], {modelTier:"quick", cache:false});
+    if (!r || typeof r.say !== "string") throw {code:"invalid_json"};
+    S.turns.push({role:"assistant", content: JSON.stringify(r)});
+    if (r.correct === true || r.correct === false) mark(r.correct);
+    if (r.word && r.word.term && (!S.current || r.word.term.toLowerCase() !== S.current.term.toLowerCase())){
+      const isReview = S.learned.some(l=>l.term.toLowerCase()===r.word.term.toLowerCase());
+      S.current = r.word; if (!isReview) S.newCount++;
+      setWord(r.word, isReview ? "Review" : "New word"); addLearned(r.word);
+    }
+    S.busy = false; setStatus(""); say(r.say);
+  } catch (e) {
+    S.busy = false; setStatus(""); S.turns.pop();
+    const code = e && e.code;
+    if (["not_granted","sampling_disabled","not_declared","capability_disabled","capability_removed"].includes(code)){
+      sample = null; setBrain(false); addMsg("note","Claude isn't available in this view, so WordBuddy switched to its built-in word bank.");
+      offline(hidden ? "" : text);
+    } else if (code === "rate_limited") addMsg("note","Claude is busy right now. Wait a moment, then send your answer again.");
+    else addMsg("note","Couldn't get a reply from Claude. Send your answer again.");
+  }
+}
+
+// ---------- brain: built-in tutor ----------
+function pickWord(){
+  let pool = BANK[S.level].filter(w => !S.learned.some(l=>l.term===w.term));
+  if (!pool.length){ const i = LEVELS.indexOf(S.level); if (i < 2){ S.level = LEVELS[i+1]; $("level").value = S.level; store.save(); return pickWord(); } pool = BANK[S.level]; }
+  return pick(pool);
+}
+function question(w, q){
+  if (q === "sentence") return `Now you try: say a sentence using the word ${w.term}.`;
+  if (q === "synonym") return `Can you tell me another word that means about the same as ${w.term}?`;
+  return `Quick check: in your own words, what does ${w.term} mean?`;
+}
+function nextItem(prefix=""){
+  S.tries = 0;
+  const reviewable = S.learned.filter(l => ALL[l.term] && (!S.current || l.term !== S.current.term));
+  if (S.newCount > 0 && S.newCount % 3 === 0 && !S.justReviewed && reviewable.length){
+    S.justReviewed = true; const w = ALL[pick(reviewable).term];
+    S.current = w; S.quiz = "meaning"; setWord(w, "Review");
+    return `${prefix} Review time! Do you remember ${w.term}? What does it mean?`.trim();
+  }
+  S.justReviewed = false;
+  const w = pickWord(); S.current = w; S.newCount++; S.quiz = QUIZ[(S.newCount-1) % 3];
+  setWord(w, "New word"); addLearned(w);
+  return `${prefix} Your ${S.newCount===1?"first":"next"} word is ${w.term}. Say it like ${w.hint.toLowerCase()}. It means ${w.meaning} For example: ${w.example} ${question(w, S.quiz)}`.trim();
+}
+function judge(ans){
+  const a = norm(ans), w = S.current;
+  if (S.quiz === "synonym") return w.syn.some(s=>hasWord(a,s));
+  if (S.quiz === "meaning") return w.keys.some(k=>a.includes(k)) || w.syn.some(s=>hasWord(a,s));
+  const stem = w.term.slice(0, Math.max(4, w.term.length-2));
+  return a.includes(stem) && a.trim().split(" ").length >= 4;
+}
+function hint(){
+  const w = S.current;
+  if (S.quiz === "synonym") return `Not quite. Here's a hint: one synonym starts with the letter ${w.syn[0][0].toUpperCase()}. Try again.`;
+  if (S.quiz === "meaning") return `Close, but not quite. Hint: think about "${w.keys[0]}". Try once more.`;
+  return `Make sure you use the word ${w.term} in a full sentence. Give it one more try.`;
+}
+function reveal(){
+  const w = S.current;
+  if (S.quiz === "synonym") return `Some synonyms for ${w.term} are ${w.syn.slice(0,2).join(" and ")}.`;
+  if (S.quiz === "meaning") return `${cap(w.term)} means ${w.meaning}`;
+  return `One way to say it: ${w.example}`;
+}
+function offline(text){
+  const t = norm(text);
+  if (!S.current) return say(nextItem("Hi, I'm WordBuddy! Let's learn some words together."));
+  let m;
+  if ((m = t.match(/what does (?:the word )?([a-z-]+) mean/))){
+    const w = ALL[m[1]]; return say(w ? `${cap(w.term)} means ${w.meaning} ${question(S.current, S.quiz)}` : `I don't have ${m[1]} in my word list yet. Back to ${S.current.term}: ${question(S.current, S.quiz)}`);
+  }
+  if (/\b(repeat|again|pardon|what did you say)\b/.test(t)) return say(S.lastSay);
+  if (/\bslower\b/.test(t)){ $("rate").value = Math.max(0.6, +$("rate").value - 0.2); $("rate").oninput(); return say(S.lastSay); }
+  if (/\bfaster\b/.test(t)){ $("rate").value = Math.min(1.4, +$("rate").value + 0.2); $("rate").oninput(); return say("Okay, I'll speak a bit faster. " + question(S.current, S.quiz)); }
+  if (/\bspell\b/.test(t)) return say(`${cap(S.current.term)} is spelled ${S.current.term.toUpperCase().split("").join(", ")}.`);
+  if (/\b(easier|too hard)\b/.test(t) || /\b(harder|too easy)\b/.test(t)){
+    const up = /\b(harder|too easy)\b/.test(t), i = LEVELS.indexOf(S.level), j = Math.min(2, Math.max(0, i + (up?1:-1)));
+    S.level = LEVELS[j]; $("level").value = S.level; store.save();
+    return say(nextItem(i===j ? `You're already on ${S.level}.` : `Sure, switching to ${S.level} words.`));
+  }
+  if (/\b(skip|next|new word|don't know|dont know|no idea|give up)\b/.test(t)){ mark(false); return say(nextItem(`No problem. ${reveal()}`)); }
+  if (judge(text)){ mark(true); return say(nextItem(pick(PRAISE) + (S.streak >= 3 ? ` That's ${S.streak} in a row!` : ""))); }
+  if (S.tries === 0){ S.tries++; return say(hint()); }
+  mark(false); return say(nextItem(`Good try. ${reveal()}`));
+}
+
+// ---------- flow ----------
+function handleUser(text){
+  if (S.busy || !text.trim()) return;
+  if (!S.started){ start(); return; }
+  addMsg("you", text);
+  if (sample) askClaude(text); else offline(text);
+}
+function start(){
+  if (S.started) return;
+  S.started = true; const b = document.querySelector(".start"); if (b) b.remove();
+  if (sample) askClaude("(The session is starting. Greet me in one short sentence, then introduce the first word.)", true);
+  else offline("");
+}
+$("form").onsubmit = e => { e.preventDefault(); const v = $("box").value.trim(); if (!v) return; $("box").value = ""; if (listening) rec.abort(); handleUser(v); };
+
+// settings
+$("level").onchange = e => { S.level = e.target.value; $("levelTag").textContent = cap(S.level); store.save(); };
+$("topic").onchange = e => { S.topic = e.target.value.trim(); store.save(); };
+$("rate").oninput = () => { $("rateVal").textContent = (+$("rate").value).toFixed(1)+"×"; };
+$("mute").onchange = e => { if (e.target.checked && "speechSynthesis" in window) speechSynthesis.cancel(); };
+$("hearBtn").onclick = () => speak($("hw").textContent, ()=>{});
+let resetArmed = false;
+$("resetBtn").onclick = e => {
+  if (!resetArmed){ resetArmed = true; e.target.textContent = "Tap again to reset"; setTimeout(()=>{ resetArmed=false; e.target.textContent="Reset progress"; }, 3000); return; }
+  S.learned = []; S.correct = 0; S.streak = 0; store.save(); renderStats(); resetArmed = false; e.target.textContent = "Reset progress";
+};
+$("promptText").textContent = PROMPT;
+$("copyBtn").onclick = async e => {
+  try { await navigator.clipboard.writeText(PROMPT); e.target.textContent = "Copied"; }
+  catch { const r = document.createRange(); r.selectNodeContents($("promptText")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); e.target.textContent = "Selected, press Ctrl+C"; }
+  setTimeout(()=>e.target.textContent="Copy", 2000);
+};
+
+// boot
+store.load();
+$("level").value = S.level; $("topic").value = S.topic; $("levelTag").textContent = cap(S.level);
+setWord(ALL.vivid, "Example"); renderStats();
+addMsg("tutor", "Hi, I'm WordBuddy. I'll teach you one word at a time, check that you've got it, and review words as we go. You can answer out loud or type. Try saying \"slower\", \"spell it\", \"skip\" or \"easier\" at any time.");
+const sb = document.createElement("button"); sb.className = "start"; sb.type = "button"; sb.textContent = "▶ Start lesson"; sb.onclick = start; log.append(sb);
+</script>
+</body>
+</html>
